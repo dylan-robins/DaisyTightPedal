@@ -11,6 +11,10 @@ Svf peak_filter;
 Overdrive drive;
 Svf lp_filter;
 
+// Re-maps a number from one range to another. That is, a value of in_min would get mapped to out_min,
+// a value of in_max to out_max, and values in-between to values in-between.
+// Does not constrain values to within the range, because out-of-range values are sometimes intended and useful.
+// Based on the equivalent function in the Arduino core library.
 float map(float x, float out_min, float out_max, float in_min = 0, float in_max = 1) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -44,18 +48,19 @@ void AudioCallback(float **in, float **out, size_t size) {
         out[0][i] = sig * volume_coeff;
     }
 }
-int main(void) {
-    hw.Configure();
-    hw.Init();
-    // hw.StartL og(true);
-    float sample_rate = hw.AudioSampleRate();
 
-    // Initialize potentiometers
+// Two pots on pins 15 and 16 (ADC 0 and 1)
+void init_potentiometers() {
     AdcChannelConfig adc[2];
     adc[0].InitSingle(hw.GetPin(15));
     adc[1].InitSingle(hw.GetPin(16));
     hw.adc.Init(adc, 2);
     hw.adc.Start();
+}
+
+// Initialize all the DSP components that we're going to use
+void init_dsp_blocks() {
+    float sample_rate = hw.AudioSampleRate();
 
     // high pass at 100 Hz
     hp_filter.Init(sample_rate);
@@ -78,8 +83,21 @@ int main(void) {
     // Initialize overdrive
     drive.Init();
     drive.SetDrive(0.5);
+}
 
+int main(void) {
+    // Internal hardware setup (GPIOs, timers etc)
+    hw.Configure();
+    hw.Init();
+
+    // External hardware setup (pots, buttons etc)
+    init_potentiometers();
+
+    // DSP component setup (filters, overdrive etc)
+    init_dsp_blocks();
+
+    // Start processing audio
     hw.StartAudio(AudioCallback);
-    
-    while (true) {}
+    while (true) {
+    }
 }
